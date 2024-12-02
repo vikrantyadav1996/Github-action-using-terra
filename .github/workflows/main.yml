@@ -16,7 +16,7 @@ on:
       ec2_instance_type:
         description: 'EC2 Instance Type'
         required: true
-        default: 't3.micro'
+        default: 't2.micro'
       ami_id:
         description: 'AMI ID'
         required: true
@@ -27,11 +27,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout the current repo (Repo-B)
+      # Step 1: Checkout the current repo (Repo-B)
       - name: Checkout Repo-B
         uses: actions/checkout@v3
 
-      # Checkout Repo-A (Terraform Module)
+      # Step 2: Checkout Repo-A (Terraform Module)
       - name: Checkout Repo-A (Terraform Module)
         uses: actions/checkout@v3
         with:
@@ -39,18 +39,18 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}  # Use the GitHub token stored in secrets
           path: terraform-module
 
-      # Debug: List files in terraform-module folder to confirm folder structure
+      # Step 3: Debug: List files in terraform-module folder to confirm folder structure
       - name: List files in terraform-module
         run: |
           ls -R terraform-module  # List the contents of the terraform-module folder
 
-      # Set up Terraform
+      # Step 4: Set up Terraform
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: '1.3.5'
 
-      # Initialize Terraform
+      # Step 5: Initialize Terraform
       - name: Terraform Init
         run: |
           echo "Current directory before cd:"
@@ -58,13 +58,13 @@ jobs:
           echo "Listing files before cd:"
           ls -al
           
-          # Navigate to the selected folder in Repo-A
+          # Navigate to the selected folder in Repo-A (e.g., ec2, vpc, etc.)
           cd terraform-module/${{ github.event.inputs.configuration_folder }}
           
-          # Run Terraform Init
+          # Run Terraform Init to initialize Terraform
           terraform init
 
-      # Configure AWS credentials using secrets
+      # Step 6: Configure AWS credentials using secrets
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -72,13 +72,13 @@ jobs:
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}  # AWS Secret Key from Secrets
           aws_region: eu-north-1
 
-      # Terraform Plan (Optional but recommended)
+      # Step 7: Terraform Plan (Optional but recommended)
       - name: Terraform Plan
         run: |
           cd terraform-module/${{ github.event.inputs.configuration_folder }}
           terraform plan -var "ec2_instance_type=${{ github.event.inputs.ec2_instance_type }}" -var "ami_id=${{ github.event.inputs.ami_id }}"
 
-      # Apply Terraform using input variables
+      # Step 8: Apply Terraform using input variables
       - name: Terraform Apply
         run: |
           cd terraform-module/${{ github.event.inputs.configuration_folder }}
