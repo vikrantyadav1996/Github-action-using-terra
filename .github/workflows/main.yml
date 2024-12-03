@@ -18,7 +18,7 @@ on:
         description: 'EC2 Instance Type'
         required: true
         type: string
-        default: 't2.micro'
+        default: 't3.micro'
       
       ami_id:
         description: 'AMI ID'
