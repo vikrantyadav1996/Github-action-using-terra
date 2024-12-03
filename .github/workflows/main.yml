@@ -13,10 +13,12 @@ on:
           - s3
           - lambda
         default: 'ec2'
+
       ec2_instance_type:
         description: 'EC2 Instance Type'
         required: true
         default: 't2.micro'
+
       ami_id:
         description: 'AMI ID'
         required: true
@@ -53,15 +55,7 @@ jobs:
       # Step 5: Initialize Terraform
       - name: Terraform Init
         run: |
-          echo "Current directory before cd:"
-          pwd
-          echo "Listing files before cd:"
-          ls -al
-          
-          # Navigate to the selected folder in Repo-A (e.g., ec2, vpc, etc.)
           cd terraform-module/${{ github.event.inputs.configuration_folder }}
-          
-          # Run Terraform Init to initialize Terraform
           terraform init
 
       # Step 6: Configure AWS credentials using secrets
@@ -70,7 +64,7 @@ jobs:
         with:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}  # AWS Access Key from Secrets
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}  # AWS Secret Key from Secrets
-          aws_region: eu-north-1
+          aws_region: eu-north-1  # Change to your preferred AWS region
 
       # Step 7: Terraform Plan (Optional but recommended)
       - name: Terraform Plan
