@@ -26,6 +26,12 @@ on:
         type: string
         default: 'ami-08eb150f611ca277f'
       
+      instance_name_value:
+        description: 'EC2 Instance Name'
+        required: true
+        type: string
+        default: 'MyEC2Instance'  # Default instance name
+      
       aws_region:
         description: 'AWS Region'
         required: true
@@ -42,7 +48,7 @@ jobs:
         run: |
           echo "GitHub Context:"
           echo "${{ toJson(github) }}"
-      
+
       # Checkout the current repository (Repo-B)
       - name: Checkout Current Repository
         uses: actions/checkout@v4
@@ -55,7 +61,7 @@ jobs:
         with:
           repository: vikrantyadav1996/terraform-module
           path: terraform-module
-      
+
       # Debug: List files to verify directory structure
       - name: Debug - List Repository Contents
         run: |
@@ -63,13 +69,13 @@ jobs:
           pwd
           echo "Contents of current directory:"
           ls -R
-      
+
       # Set up Terraform
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: '1.5.7'
-      
+
       # Configure AWS Credentials
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -77,7 +83,7 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ github.event.inputs.aws_region }}
-      
+
       # Terraform Initialize with Dynamic Path
       - name: Terraform Initialize
         run: |
@@ -99,7 +105,7 @@ jobs:
           # Initialize Terraform
           terraform init
         shell: bash
-      
+
       # Terraform Plan with Dynamic Path
       - name: Terraform Plan
         run: |
@@ -116,9 +122,10 @@ jobs:
           # Run Terraform Plan
           terraform plan \
             -var "ec2_instance_type=${{ github.event.inputs.ec2_instance_type }}" \
-            -var "ami_id=${{ github.event.inputs.ami_id }}"
+            -var "ami_value=${{ github.event.inputs.ami_id }}" \
+            -var "instance_name_value=${{ github.event.inputs.instance_name_value }}"
         shell: bash
-      
+
       # Terraform Apply with Dynamic Path
       - name: Terraform Apply
         run: |
@@ -135,6 +142,7 @@ jobs:
           # Apply Terraform with variables
           terraform apply \
             -var "ec2_instance_type=${{ github.event.inputs.ec2_instance_type }}" \
-            -var "ami_id=${{ github.event.inputs.ami_id }}" \
+            -var "ami_value=${{ github.event.inputs.ami_id }}" \
+            -var "instance_name_value=${{ github.event.inputs.instance_name_value }}" \
             -auto-approve
         shell: bash
