@@ -1,10 +1,10 @@
-name: Deploy EC2 using Terraform
+name: Deploy EC2 with Terraform
 
 on:
   workflow_dispatch:
     inputs:
       configuration_folder:
-        description: 'Select the Terraform folder to apply (e.g., ec2, vpc, s3, lambda). This workflow uses the terraform-module from: https://github.com/vikrantyadav1996/terraform-module.git'
+        description: 'Select the Terraform folder to apply'
         required: true
         type: choice
         options:
@@ -13,67 +13,128 @@ on:
           - s3
           - lambda
         default: 'ec2'
-
+      
       ec2_instance_type:
         description: 'EC2 Instance Type'
         required: true
+        type: string
         default: 't2.micro'
-
+      
       ami_id:
         description: 'AMI ID'
         required: true
-        default: 'ami-08eb150f611ca277f'  # Default AMI ID
+        type: string
+        default: 'ami-08eb150f611ca277f'
+      
+      aws_region:
+        description: 'AWS Region'
+        required: true
+        type: string
+        default: 'eu-north-1'
 
 jobs:
   terraform:
     runs-on: ubuntu-latest
-
+    
     steps:
-      # Step 1: Checkout the current repo (Repo-B)
-      - name: Checkout Repo-B
-        uses: actions/checkout@v3
-
-      # Step 2: Checkout Repo-A (Terraform Module)
-      - name: Checkout Repo-A (Terraform Module)
-        uses: actions/checkout@v3
+      # Debug: Print GitHub Context
+      - name: Print GitHub Context
+        run: |
+          echo "GitHub Context:"
+          echo "${{ toJson(github) }}"
+      
+      # Checkout the current repository (Repo-B)
+      - name: Checkout Current Repository
+        uses: actions/checkout@v4
+        with:
+          path: current-repo
+      
+      # Checkout the Terraform Module Repository
+      - name: Checkout Terraform Module Repository
+        uses: actions/checkout@v4
         with:
           repository: vikrantyadav1996/terraform-module
-          token: ${{ secrets.GITHUB_TOKEN }}  # Use the GitHub token stored in secrets
           path: terraform-module
-
-      # Step 3: Debug: List files in terraform-module folder to confirm folder structure
-      - name: List files in terraform-module
+      
+      # Debug: List files to verify directory structure
+      - name: Debug - List Repository Contents
         run: |
-          ls -R terraform-module  # List the contents of the terraform-module folder
-
-      # Step 4: Set up Terraform
+          echo "Current directory:"
+          pwd
+          echo "Contents of current directory:"
+          ls -R
+      
+      # Set up Terraform
       - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v2
+        uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: '1.3.5'
-
-      # Step 5: Initialize Terraform
-      - name: Terraform Init
+          terraform_version: '1.5.7'
+      
+      # Configure AWS Credentials
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ github.event.inputs.aws_region }}
+      
+      # Terraform Initialize with Dynamic Path
+      - name: Terraform Initialize
         run: |
-          cd terraform-module/${{ github.event.inputs.configuration_folder }}
+          # Find the correct path to the Terraform configuration
+          CONFIG_PATH=$(find . -type d -name "${{ github.event.inputs.configuration_folder }}" | grep -i "terraform-module")
+          
+          if [ -z "$CONFIG_PATH" ]; then
+            echo "Error: Configuration folder not found"
+            exit 1
+          fi
+          
+          echo "Found configuration path: $CONFIG_PATH"
+          cd "$CONFIG_PATH"
+          
+          # Debug: List files in the configuration directory
+          echo "Contents of configuration directory:"
+          ls -la
+          
+          # Initialize Terraform
           terraform init
-
-      # Step 6: Configure AWS credentials using secrets
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}  # AWS Access Key from Secrets
-          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}  # AWS Secret Key from Secrets
-          aws_region: eu-north-1  # Change to your preferred AWS region
-
-      # Step 7: Terraform Plan (Optional but recommended)
+        shell: bash
+      
+      # Terraform Plan with Dynamic Path
       - name: Terraform Plan
         run: |
-          cd terraform-module/${{ github.event.inputs.configuration_folder }}
-          terraform plan -var "ec2_instance_type=${{ github.event.inputs.ec2_instance_type }}" -var "ami_id=${{ github.event.inputs.ami_id }}"
-
-      # Step 8: Apply Terraform using input variables
+          # Find the correct path to the Terraform configuration
+          CONFIG_PATH=$(find . -type d -name "${{ github.event.inputs.configuration_folder }}" | grep -i "terraform-module")
+          
+          if [ -z "$CONFIG_PATH" ]; then
+            echo "Error: Configuration folder not found"
+            exit 1
+          fi
+          
+          cd "$CONFIG_PATH"
+          
+          # Run Terraform Plan
+          terraform plan \
+            -var "ec2_instance_type=${{ github.event.inputs.ec2_instance_type }}" \
+            -var "ami_id=${{ github.event.inputs.ami_id }}"
+        shell: bash
+      
+      # Terraform Apply with Dynamic Path
       - name: Terraform Apply
         run: |
-          cd terraform-module/${{ github.event.inputs.configuration_folder }}
-          terraform apply -var "ec2_instance_type=${{ github.event.inputs.ec2_instance_type }}" -var "ami_id=${{ github.event.inputs.ami_id }}" -auto-approve
+          # Find the correct path to the Terraform configuration
+          CONFIG_PATH=$(find . -type d -name "${{ github.event.inputs.configuration_folder }}" | grep -i "terraform-module")
+          
+          if [ -z "$CONFIG_PATH" ]; then
+            echo "Error: Configuration folder not found"
+            exit 1
+          fi
+          
+          cd "$CONFIG_PATH"
+          
+          # Apply Terraform with variables
+          terraform apply \
+            -var "ec2_instance_type=${{ github.event.inputs.ec2_instance_type }}" \
+            -var "ami_id=${{ github.event.inputs.ami_id }}" \
+            -auto-approve
+        shell: bash
