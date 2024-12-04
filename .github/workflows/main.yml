@@ -1,13 +1,17 @@
-name: Terraform Workflow
+name: Terraform EC2 Workflow
 
 on:
-  push:
-    branches:
-      - main  # Trigger this workflow on pushes to the main branch
-  pull_request:
-    branches:
-      - main  # Trigger this workflow on pull requests targeting main branch
-
+  workflow_dispatch:
+    inputs:
+      ami_value:
+        description: 'Enter the AMI ID'
+        required: true
+        default: 'ami-08eb150f611ca277f'  # Default AMI ID (you can replace this with any default value)
+      instance_type:
+        description: 'Enter the EC2 instance type'
+        required: true
+        default: 't3.micro'  # Default EC2 instance type (replace as needed)
+        
 jobs:
   terraform:
     runs-on: ubuntu-latest
@@ -28,19 +32,19 @@ jobs:
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v1
         with:
-          terraform_version: 1.3.7  # You can specify the version you want to use
+          terraform_version: 1.3.7  # Specify the Terraform version
 
       # Step 4: Initialize Terraform (in the ec2 module directory)
       - name: Terraform Init
-        working-directory: terraform-module/module/ec2  # Set the working directory to the ec2 module
+        working-directory: terraform-module/module/ec2  # Point to the ec2 folder
         run: terraform init
 
-      # Step 5: Run Terraform Plan (optional)
+      # Step 5: Terraform Plan with input variables (ami_value and instance_type)
       - name: Terraform Plan
         working-directory: terraform-module/module/ec2
-        run: terraform plan
+        run: terraform plan -var "ami_value=${{ github.event.inputs.ami_value }}" -var "instance_type=${{ github.event.inputs.instance_type }}"
 
-      # Step 6: Apply the Terraform code (optional)
+      # Step 6: Terraform Apply with input variables
       - name: Terraform Apply
         working-directory: terraform-module/module/ec2
-        run: terraform apply -auto-approve  # Run with auto-approve flag (be cautious)
+        run: terraform apply -auto-approve -var "ami_value=${{ github.event.inputs.ami_value }}" -var "instance_type=${{ github.event.inputs.instance_type }}"
