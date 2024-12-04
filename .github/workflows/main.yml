@@ -109,15 +109,7 @@ jobs:
       # Terraform Plan with Dynamic Path
       - name: Terraform Plan
         run: |
-          # Find the correct path to the Terraform configuration
-          CONFIG_PATH=$(find . -type d -name "${{ github.event.inputs.configuration_folder }}" | grep -i "terraform-module")
-          
-          if [ -z "$CONFIG_PATH" ]; then
-            echo "Error: Configuration folder not found"
-            exit 1
-          fi
-          
-          cd "$CONFIG_PATH"
+         
           
           # Run Terraform Plan
           terraform plan \
@@ -129,16 +121,6 @@ jobs:
       # Terraform Apply with Dynamic Path
       - name: Terraform Apply
         run: |
-          # Find the correct path to the Terraform configuration
-          CONFIG_PATH=$(find . -type d -name "${{ github.event.inputs.configuration_folder }}" | grep -i "terraform-module")
-          
-          if [ -z "$CONFIG_PATH" ]; then
-            echo "Error: Configuration folder not found"
-            exit 1
-          fi
-          
-          cd "$CONFIG_PATH"
-          
           # Apply Terraform with variables
           terraform apply \
             -var "ec2_instance_type=${{ github.event.inputs.ec2_instance_type }}" \
