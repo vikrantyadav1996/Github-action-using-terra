@@ -1,130 +1,46 @@
-name: Deploy EC2 with Terraform
+name: Terraform Workflow
 
 on:
-  workflow_dispatch:
-    inputs:
-      configuration_folder:
-        description: 'Select the Terraform folder to apply'
-        required: true
-        type: choice
-        options:
-          - ec2
-          - vpc
-          - s3
-          - lambda
-        default: 'ec2'
-      
-      ec2_instance_type:
-        description: 'EC2 Instance Type'
-        required: true
-        type: string
-        default: 't3.micro'
-      
-      ami_id:
-        description: 'AMI ID'
-        required: true
-        type: string
-        default: 'ami-08eb150f611ca277f'
-      
-      instance_name_value:
-        description: 'EC2 Instance Name'
-        required: true
-        type: string
-        default: 'MyEC2Instance'  # Default instance name
-      
-      aws_region:
-        description: 'AWS Region'
-        required: true
-        type: string
-        default: 'eu-north-1'
+  push:
+    branches:
+      - main  # Trigger this workflow on pushes to the main branch
+  pull_request:
+    branches:
+      - main  # Trigger this workflow on pull requests targeting main branch
 
 jobs:
   terraform:
     runs-on: ubuntu-latest
-    
+
     steps:
-      # Debug: Print GitHub Context
-      - name: Print GitHub Context
-        run: |
-          echo "GitHub Context:"
-          echo "${{ toJson(github) }}"
+      # Step 1: Checkout the code of your app repository
+      - name: Checkout my-app-repo
+        uses: actions/checkout@v2
 
-      # Checkout the current repository (Repo-B)
-      - name: Checkout Current Repository
-        uses: actions/checkout@v4
+      # Step 2: Checkout the terraform-module repository where your modules are stored
+      - name: Checkout terraform-module repository
+        uses: actions/checkout@v2
         with:
-          path: current-repo
-      
-      # Checkout the Terraform Module Repository
-      - name: Checkout Terraform Module Repository
-        uses: actions/checkout@v4
-        with:
-          repository: vikrantyadav1996/terraform-module
-          path: terraform-module
+          repository: vikrantyadav1996/terraform-module  # Your terraform-module repo
+          path: terraform-module  # This will check out your repo under the 'terraform-module' folder
 
-      # Debug: List files to verify directory structure
-      - name: Debug - List Repository Contents
-        run: |
-          echo "Current directory:"
-          pwd
-          echo "Contents of current directory:"
-          ls -R
-
-      # Set up Terraform
+      # Step 3: Set up Terraform
       - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v1
         with:
-          terraform_version: '1.5.7'
+          terraform_version: 1.3.7  # You can specify the version you want to use
 
-      # Configure AWS Credentials
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ github.event.inputs.aws_region }}
+      # Step 4: Initialize Terraform (in the ec2 module directory)
+      - name: Terraform Init
+        working-directory: terraform-module/module/ec2  # Set the working directory to the ec2 module
+        run: terraform init
 
-      # Terraform Initialize with Dynamic Path
-      - name: Terraform Initialize
-        run: |
-          # Find the correct path to the Terraform configuration
-          CONFIG_PATH=$(find . -type d -name "${{ github.event.inputs.configuration_folder }}" | grep -i "terraform-module")
-          
-          if [ -z "$CONFIG_PATH" ]; then
-            echo "Error: Configuration folder not found"
-            exit 1
-          fi
-          
-          echo "Found configuration path: $CONFIG_PATH"
-          cd "$CONFIG_PATH"
-          
-          # Debug: List files in the configuration directory
-          echo "Contents of configuration directory:"
-          ls -la
-          
-          # Initialize Terraform
-          terraform init
-        shell: bash
-
-      # Terraform Plan with Dynamic Path
+      # Step 5: Run Terraform Plan (optional)
       - name: Terraform Plan
-        run: |
-         
-          
-          # Run Terraform Plan
-          terraform plan \
-            -var "ec2_instance_type=${{ github.event.inputs.ec2_instance_type }}" \
-            -var "ami_value=${{ github.event.inputs.ami_id }}" \
-            -var "instance_name_value=${{ github.event.inputs.instance_name_value }}"
-        shell: bash
+        working-directory: terraform-module/module/ec2
+        run: terraform plan
 
-      # Terraform Apply with Dynamic Path
+      # Step 6: Apply the Terraform code (optional)
       - name: Terraform Apply
-        run: |
-          # Apply Terraform with variables
-          terraform apply \
-            -var "ec2_instance_type=${{ github.event.inputs.ec2_instance_type }}" \
-            -var "ami_value=${{ github.event.inputs.ami_id }}" \
-            -var "instance_name_value=${{ github.event.inputs.instance_name_value }}" \
-            -auto-approve
-        shell: bash
+        working-directory: terraform-module/module/ec2
+        run: terraform apply -auto-approve  # Run with auto-approve flag (be cautious)
